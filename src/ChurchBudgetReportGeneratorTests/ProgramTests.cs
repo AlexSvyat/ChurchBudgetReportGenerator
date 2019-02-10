@@ -17,9 +17,9 @@ namespace ChurchBudgetReportGenerator.Tests
         {
             var testTrans = new List<TransactionData>
             {
-                new TransactionData { TimeStamp = DateTime.Parse("1-1-19"), Account = new Account("1", "TestAccount"), Amount = 2 },
-                new TransactionData { TimeStamp = DateTime.Parse("1-2-19"), Account = new Account("1", "TestAccount"), Amount = 3 },
-                new TransactionData { TimeStamp = DateTime.Parse("2-1-19"), Account = new Account("1", "TestAccount"), Amount = 4 }
+                new TransactionData { TimeStamp = DateTime.Parse("1-1-19"), Account = new Account("1", "TestAccount", AccountType.Expenses), Amount = 2 },
+                new TransactionData { TimeStamp = DateTime.Parse("1-2-19"), Account = new Account("1", "TestAccount", AccountType.Expenses), Amount = 3 },
+                new TransactionData { TimeStamp = DateTime.Parse("2-1-19"), Account = new Account("1", "TestAccount", AccountType.Expenses), Amount = 4 }
             };
 
             var grouppedByMonth = Program.GetTransactionsGrouppedByYearAndMonth(testTrans);
@@ -37,13 +37,13 @@ namespace ChurchBudgetReportGenerator.Tests
         {
             var testTrans = new List<TransactionData>
             {
-                new TransactionData { TimeStamp = DateTime.Parse("1-1-19"), Account = new Account("3001", "TestAccount"), Amount = 2 },
-                new TransactionData { TimeStamp = DateTime.Parse("1-2-19"), Account = new Account("3002", "TestAccount"), Amount = 3 },
-                new TransactionData { TimeStamp = DateTime.Parse("1-2-19"), Account = new Account("3001", "TestAccount"), Amount = 4 },
-                new TransactionData { TimeStamp = DateTime.Parse("1-2-19"), Account = new Account("3003", "TestAccount"), Amount = 5.05m },
-                new TransactionData { TimeStamp = DateTime.Parse("1-31-19"), Account = new Account("3002", "TestAccount"), Amount = 3.01m },
+                new TransactionData { TimeStamp = DateTime.Parse("1-1-19"), Account = new Account("3001", "TestAccount", AccountType.Expenses), Amount = 2 },
+                new TransactionData { TimeStamp = DateTime.Parse("1-2-19"), Account = new Account("3002", "TestAccount", AccountType.Expenses), Amount = 3 },
+                new TransactionData { TimeStamp = DateTime.Parse("1-2-19"), Account = new Account("3001", "TestAccount", AccountType.Expenses), Amount = 4 },
+                new TransactionData { TimeStamp = DateTime.Parse("1-2-19"), Account = new Account("3003", "TestAccount", AccountType.Expenses), Amount = 5.05m },
+                new TransactionData { TimeStamp = DateTime.Parse("1-31-19"), Account = new Account("3002", "TestAccount", AccountType.Expenses), Amount = 3.01m },
 
-                new TransactionData { TimeStamp = DateTime.Parse("2-1-19"), Account = new Account("4001", "TestAccount"), Amount = 4 }
+                new TransactionData { TimeStamp = DateTime.Parse("2-1-19"), Account = new Account("4001", "TestAccount", AccountType.Expenses), Amount = 4 }
             };
 
             var grouppedByMonth = Program.GetTransactionsGrouppedByYearAndMonth(testTrans);

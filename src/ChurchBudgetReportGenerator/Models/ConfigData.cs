@@ -7,13 +7,13 @@ namespace ChurchBudgetReportGenerator.Models
     /// </summary>
     public class ConfigData
     {
-        public List<string> AccountTypes { get; set; }
+        public List<AccountType> AccountTypes { get; set; }
         public List<Account> Accounts { get; set; }
         public List<Fund> Funds { get; set; }
 
         public ConfigData()
         {
-            AccountTypes = new List<string>();
+            AccountTypes = new List<AccountType>();
             Accounts = new List<Account>();
             Funds = new List<Fund>();
         }

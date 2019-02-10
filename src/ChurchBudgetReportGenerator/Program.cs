@@ -47,7 +47,8 @@ namespace ChurchBudgetReportGenerator
             Console.WriteLine("Updating file with Monthly Summary Reports");
             foreach (var monthlyGroup in monthlyGrouppedTransactions)
             {
-                ExcelFileHandler.UpdateExcelFileWithMonthlySummaryReport(filePath, monthlyGroup, configData);
+                ExcelFileHandler.UpdateExcelFileWithMonthlySummaryPLReport(filePath, monthlyGroup, configData);
+                ExcelFileHandler.UpdateExcelFileWithMonthlySummaryForBulletin(filePath, monthlyGroup, configData);
             }
             Console.WriteLine("File update completed.");
         }

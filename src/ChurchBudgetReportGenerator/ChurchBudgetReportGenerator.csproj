@@ -50,6 +50,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Enumerations.cs" />
     <Compile Include="ExcelFileHandler.cs" />
     <Compile Include="Models\AccountMonthlySummaryData.cs" />
     <Compile Include="Models\AccountData.cs" />
@@ -63,9 +64,12 @@
   <ItemGroup>
     <None Include="App.config" />
     <None Include="packages.config" />
-    <None Include="TestData\NewBudget_Blank.xlsx">
+    <None Include="Template\NewBudget_Blank.xlsx">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <PropertyGroup>
+    <PostBuildEvent>xcopy /cherkyfs $(TargetDir)*.* D:\Users\admin\Documents\Church\$(ProjectName)\</PostBuildEvent>
+  </PropertyGroup>
 </Project>

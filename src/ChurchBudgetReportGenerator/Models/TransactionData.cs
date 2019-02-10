@@ -1,8 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace ChurchBudgetReportGenerator.Models
 {
@@ -12,5 +8,6 @@ namespace ChurchBudgetReportGenerator.Models
     public class TransactionData : AccountData
     {
         public DateTime TimeStamp { get; set; }
+        public string Description { get; set; }
     }
 }

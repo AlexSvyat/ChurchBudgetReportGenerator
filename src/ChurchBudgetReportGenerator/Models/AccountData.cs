@@ -24,14 +24,14 @@
         {
         }
 
-        public Account(string accountNumberStr, string accountName, string accountType = null)
+        public Account(string accountNumberStr, string accountName, AccountType accountType)
         {
             Number = int.Parse(accountNumberStr);
             Name = accountName;
             Type = accountType;
         }
 
-        public string Type { get; set; }
+        public AccountType Type { get; set; }
         public int Number { get; set; }
         public string Name { get; set; }
     }
