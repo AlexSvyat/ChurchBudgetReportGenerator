@@ -154,6 +154,19 @@ namespace ChurchBudgetReportGenerator
         }
 
         /// <summary>
+        /// Updates Excel file with Yearly Summary Report
+        /// </summary>
+        /// <param name="filePath"></param>
+        /// <param name="yearlyData"></param>
+        /// <param name="configData"></param>
+        public static void UpdateExcelFileWithYearySummaryReport(string filePath, IEnumerable<AccountMonthlySummaryData> yearlyData, ConfigData configData)
+        {
+            throw new NotImplementedException();
+        }
+
+
+
+        /// <summary>
         /// Updates Excel file with Monthly Summary Report for Bulletin
         /// </summary>
         public static void UpdateExcelFileWithMonthlySummaryForBulletin(string filePath, AccountMonthlySummaryData monthlySummaryData, ConfigData configData)
@@ -267,6 +280,7 @@ namespace ChurchBudgetReportGenerator
             }
 
             // Apply Table formatting
+            // Not working, keeping, in case I could figure out how
             //using (ExcelRange Rng = ws.Cells[$"A1:{GetColumnName(fundNameColumn)}{formulaRow}"])
             //{
             //    var tblcollection = ws.Tables;
