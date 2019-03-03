@@ -16,7 +16,7 @@
     }
 
     /// <summary>
-    /// Account data
+    /// Account object
     /// </summary>
     public class Account
     {        

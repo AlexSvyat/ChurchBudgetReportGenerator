@@ -17,6 +17,14 @@ namespace ChurchBudgetReportGenerator.Models
             Accounts = new List<Account>();
             Funds = new List<Fund>();
         }
+
+        public void ResetFundsReportStartingAmount()
+        {
+            foreach (var fund in Funds)
+            {
+                fund.ReportStartingAmount = fund.BeginningAmount;
+            }
+        }
     }
 
     public class Fund
@@ -29,10 +37,21 @@ namespace ChurchBudgetReportGenerator.Models
         public Fund(string fundName, decimal startAmount)
         {
             Name = fundName;
-            StartingPeriodAmount = startAmount;
+            BeginningAmount = startAmount;
+            ReportStartingAmount = BeginningAmount;
         }
 
         public string Name { get; set; }
-        public decimal StartingPeriodAmount { get; set; }
+
+        /// <summary>
+        /// Fund Starting Amount for Report
+        /// </summary>
+        public decimal ReportStartingAmount { get; set; }
+
+        /// <summary>
+        /// Fund Beginning Amount at the beginning of the year
+        /// </summary>
+        public decimal BeginningAmount { get; set; }
+
     }
 }

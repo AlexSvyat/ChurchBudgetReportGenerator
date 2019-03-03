@@ -1,7 +1,6 @@
 ﻿using ChurchBudgetReportGenerator.Models;
 using System;
 using System.Collections.Generic;
-using System.Globalization;
 using System.IO;
 using System.Linq;
 
@@ -42,24 +41,42 @@ namespace ChurchBudgetReportGenerator
             // Group by months
             Console.WriteLine("Grouping Transactions Data by months");
             var monthlyGrouppedTransactions = GetTransactionsGrouppedByYearAndMonth(transactionData);
+            var monthlyGroupedExpenses = GetExpensesGrouppedByYearAndMonth(transactionData);
 
             // For each month, generate summary data for that month
             Console.WriteLine("Updating file with Monthly Summary Reports");
-            foreach (var monthlyGroup in monthlyGrouppedTransactions)
+            foreach (var monthlySummaryData in monthlyGrouppedTransactions)
             {
-                ExcelFileHandler.UpdateExcelFileWithMonthlySummaryPLReport(filePath, monthlyGroup, configData);
-                ExcelFileHandler.UpdateExcelFileWithMonthlySummaryForBulletin(filePath, monthlyGroup, configData);
+                var monthNameReduced = new string(monthlySummaryData.MonthName.Take(3).ToArray());
+                ExcelFileHandler.UpdateExcelFileWithSummaryReport(filePath, monthlySummaryData, configData,
+                    $"P&L_{monthNameReduced}",
+                    $"{monthlySummaryData.MonthName} {monthlySummaryData.Year}", string.Empty, string.Empty, string.Empty);
+
+                ExcelFileHandler.UpdateExcelFileWithMonthlySummaryForBulletin(filePath, monthlySummaryData, configData);
+
+                var monthExpenses = monthlyGroupedExpenses.FirstOrDefault(m => m.MonthNumber == monthlySummaryData.MonthNumber);
+                ExcelFileHandler.UpdateExcelFileWithMonthlyExpensesSummary(filePath, monthExpenses, configData,
+                    $"Expenses_{monthNameReduced}", $"For {monthlySummaryData.MonthName} {monthlySummaryData.Year}");
             }
 
             // Create Yearly report
-            var yearlyData = GetTransactionsGrouppedByYear(transactionData);
-            ExcelFileHandler.UpdateExcelFileWithYearySummaryReport(filePath, yearlyData, configData);
+            // Reset cash funds amount for yearly
+            Console.WriteLine("Updating file with Yearly Reports");
+            configData.ResetFundsReportStartingAmount();
+            var yearsData = GetTransactionsGrouppedByYear(transactionData);
+            foreach (var yearData in yearsData)
+            {
+                ExcelFileHandler.UpdateExcelFileWithSummaryReport(filePath, yearData, configData,
+                    $"Annual_{yearData.Year}", "Annual Report",
+                    $"For Jan 1 {yearData.Year} to Dec 31 {yearData.Year}",
+                    " (1/1)", " (12/31)");
+            }
 
             Console.WriteLine("File update completed.");
         }
 
         /// <summary>
-        /// Return list of Account Summary data to be placed into final Excel Report
+        /// Return list of Account Summary data to be placed into Excel Reports
         /// </summary>
         public static List<AccountData> GetAccountDataSummary(IEnumerable<TransactionData> transactions)
         {
@@ -90,13 +107,64 @@ namespace ChurchBudgetReportGenerator
             return returnData;
         }
 
+        public static ICollection<AccountTransactions> GetAccountTransactionsSummary(ICollection<TransactionData> transactions)
+        {
+            var returnData = new List<AccountTransactions>();
+
+            // Get transactions grouped by account Number
+            var accountGrouppedTransactions = transactions.GroupBy(t => t.Account.Number);
+
+            // For each account, grouping by Description
+            foreach (var accountGrouppedTransaction in accountGrouppedTransactions)
+            {
+                var descriptionGrouppedTransactions = accountGrouppedTransaction
+                    .GroupBy(t => t.Description);
+
+                foreach (var descriptionGrouppedTransaction in descriptionGrouppedTransactions)
+                {
+                    returnData.Add
+                        (
+                        new AccountTransactions
+                        {
+                            Account = descriptionGrouppedTransaction.FirstOrDefault().Account,
+                            Description = descriptionGrouppedTransaction.FirstOrDefault().Description,
+                            Amount = descriptionGrouppedTransaction.Sum(t => t.Amount)
+                        }
+                        );
+                }
+            }
+            return returnData;
+        }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="transactionData"></param>
+        /// <returns></returns>
+        public static IEnumerable<AccountTransactionsData> GetExpensesGrouppedByYearAndMonth(ICollection<TransactionData> transactionData)
+        {
+            var expenses = transactionData
+                .Where(t => t.Account.Type == AccountType.Expenses)
+                .ToList();
+
+            return expenses
+                .GroupBy(t => new { t.TimeStamp.Year, t.TimeStamp.Month })
+                .Select(g => new AccountTransactionsData()
+                {
+                    Year = g.Key.Year,
+                    MonthNumber = g.Key.Month,
+                    AccountTransactions = GetAccountTransactionsSummary(g.ToList())
+                }
+                );
+        }
+
         /// <summary>
         /// Return all transactions grouped by each Month
         /// </summary>
-        public static IEnumerable<AccountMonthlySummaryData> GetTransactionsGrouppedByYearAndMonth(ICollection<TransactionData> transactionData)
+        public static IEnumerable<AccountSummaryData> GetTransactionsGrouppedByYearAndMonth(ICollection<TransactionData> transactionData)
         {
             return transactionData.GroupBy(t => new { t.TimeStamp.Year, t.TimeStamp.Month})
-                .Select(g => new AccountMonthlySummaryData()
+                .Select(g => new AccountSummaryData()
                 {
                     Year = g.Key.Year,
                     MonthNumber = g.Key.Month,
@@ -108,10 +176,10 @@ namespace ChurchBudgetReportGenerator
         /// <summary>
         /// Return all transactions grouped by Year
         /// </summary>
-        public static IEnumerable<AccountMonthlySummaryData> GetTransactionsGrouppedByYear(ICollection<TransactionData> transactionData)
+        public static IEnumerable<AccountSummaryData> GetTransactionsGrouppedByYear(ICollection<TransactionData> transactionData)
         {
             return transactionData.GroupBy(t => new { t.TimeStamp.Year})
-                .Select(g => new AccountMonthlySummaryData()
+                .Select(g => new AccountSummaryData()
                 {
                     Year = g.Key.Year,
                     Accounts = GetAccountDataSummary(g.ToList())

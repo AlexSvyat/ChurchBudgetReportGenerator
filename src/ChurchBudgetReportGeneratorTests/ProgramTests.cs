@@ -1,11 +1,8 @@
-﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
-using ChurchBudgetReportGenerator;
+﻿using ChurchBudgetReportGenerator.Models;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using ChurchBudgetReportGenerator.Models;
 
 namespace ChurchBudgetReportGenerator.Tests
 {
@@ -59,6 +56,35 @@ namespace ChurchBudgetReportGenerator.Tests
             Assert.AreEqual("February", summaryDataForFebruary.MonthName);
             Assert.AreEqual(1, summaryDataForFebruary.Accounts.Count);
             Assert.AreEqual(4, summaryDataForFebruary.Accounts.FirstOrDefault(d => d.Account.Number == 4001).Amount);
+        }
+
+        [TestMethod()]
+        public void GetExpensesGrouppedByYearAndMonth_2Month_Success_Test()
+        {
+            var testTrans = new List<TransactionData>
+            {
+                new TransactionData { TimeStamp = DateTime.Parse("1-1-19"), Account = new Account("1", "TestAccount", AccountType.Expenses), Amount = 2, Description = "Desc1_1" },
+                new TransactionData { TimeStamp = DateTime.Parse("1-2-19"), Account = new Account("1", "TestAccount", AccountType.Expenses), Amount = 3, Description = "Desc1_1" },
+                new TransactionData { TimeStamp = DateTime.Parse("1-2-19"), Account = new Account("1", "TestAccount", AccountType.Expenses), Amount = 3, Description = "Desc1_2" },
+                new TransactionData { TimeStamp = DateTime.Parse("2-1-19"), Account = new Account("1", "TestAccount", AccountType.Expenses), Amount = 4, Description = "Desc2_1" },
+                new TransactionData { TimeStamp = DateTime.Parse("2-1-19"), Account = new Account("1", "TestAccount", AccountType.Expenses), Amount = 5, Description = "Desc2_2" }
+
+            };
+
+            var grouppedExpenses = Program.GetExpensesGrouppedByYearAndMonth(testTrans);
+            Assert.AreEqual(2, grouppedExpenses.Count(), "Expected to get data for 2 months!");
+
+            // Getting Total Amount for January
+            var janData = grouppedExpenses.Where(i => i.MonthNumber == 1).FirstOrDefault();
+            Assert.AreEqual(2, janData.AccountTransactions.Count());
+            Assert.AreEqual(5, janData.AccountTransactions.Where(a => a.Description == "Desc1_1").FirstOrDefault().Amount);
+            Assert.AreEqual(3, janData.AccountTransactions.Where(a => a.Description == "Desc1_2").FirstOrDefault().Amount);
+
+            // Getting Total Amount for February
+            var febData = grouppedExpenses.Where(i => i.MonthNumber == 2).FirstOrDefault();
+            Assert.AreEqual(2, febData.AccountTransactions.Count());
+            Assert.AreEqual(4, febData.AccountTransactions.Where(a => a.Description == "Desc2_1").FirstOrDefault().Amount);
+            Assert.AreEqual(5, febData.AccountTransactions.Where(a => a.Description == "Desc2_2").FirstOrDefault().Amount);
         }
     }
 }

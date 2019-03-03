@@ -1,7 +1,6 @@
 ﻿using ChurchBudgetReportGenerator.Models;
 using OfficeOpenXml;
 using OfficeOpenXml.Style;
-using OfficeOpenXml.Table;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -15,14 +14,15 @@ namespace ChurchBudgetReportGenerator
     public static class ExcelFileHandler
     {
         /// <summary>
-        /// Updates Excel file with Monthly Summary Profit and Loss (PL) Report data
+        /// Updates Excel file with Summary Report, either Monthly or Yearly
         /// </summary>
-        public static void UpdateExcelFileWithMonthlySummaryPLReport(string filePath, AccountMonthlySummaryData monthlySummaryData, ConfigData configData)
+        public static void UpdateExcelFileWithSummaryReport(string filePath, AccountSummaryData summaryData, 
+            ConfigData configData, string sheetName, string headerTextFor3rdRow, string headerTextFor4thRow,
+            string suffixForCashBegin, string suffixForCashEnd)
         {
-
             // Row and Column numbers of for this report
             var headerRow = 2;
-            var fundHeaderRow = headerRow + 4;
+            var fundHeaderRow = headerRow + 5;
             var fundStartAmountRow = fundHeaderRow + 2;
             var dataStartRow = fundStartAmountRow + 2;
             int fundEndAmountRow;
@@ -36,10 +36,7 @@ namespace ChurchBudgetReportGenerator
             ExcelPackage pck = new ExcelPackage(output);
 
             // Create the workbook
-            // Add the Content Profit and Loss (P&L) monthly report worksheet
-
-            // WorkSheet name should look like "P&L_Jan", "P&L_Feb", etc
-            var sheetName =  $"P&L_{new string(monthlySummaryData.MonthName.Take(3).ToArray())}";            
+            // Check if required sheet already in file, delete to be updated
             if (pck.Workbook.Worksheets[sheetName] != null)
             {
                 pck.Workbook.Worksheets.Delete(sheetName);
@@ -52,25 +49,32 @@ namespace ChurchBudgetReportGenerator
             AddHeaderRow(ws, headerRow + 1, accountNumberColumn, configData.Funds.Count(), 12,
                 "Statement of Activities	");
             AddHeaderRow(ws, headerRow + 2, accountNumberColumn, configData.Funds.Count(), 12,
-                $"{monthlySummaryData.MonthName} {monthlySummaryData.Year}");
+                headerTextFor3rdRow);
+
+            if (!string.IsNullOrWhiteSpace(headerTextFor4thRow))
+            {
+                AddHeaderRow(ws, headerRow + 3, accountNumberColumn, configData.Funds.Count(), 10,
+                headerTextFor4thRow);
+            }            
 
             // Columns width
             ws.Column(1).Width = 2.5;
             ws.Column(accountNumberColumn).Width = 10;
             ws.Column(accountNameColumn).Width = 25;
-            
+
             var fundEndColumn = fundStartColumn;
 
             // Add Fund Headers
             var amountColumnWidth = 14;
-            AddCellValueBold(ws, fundStartAmountRow, accountNameColumn, "Cash Beginning of Period:");
+            AddCellValueBold(ws, fundStartAmountRow, accountNameColumn,
+                $"Cash Beginning of Period{suffixForCashBegin}:");
             foreach (var fund in configData.Funds)
             {
                 ws.Column(fundEndColumn).Width = amountColumnWidth;
                 AddCellValueCenterBold(ws, fundHeaderRow, fundEndColumn, fund.Name);
-                                
-                // Fund starting amount
-                AddCellValueCenterBold(ws, fundStartAmountRow, fundEndColumn, fund.StartingPeriodAmount,
+
+                // Fund report start amount
+                AddCellValueCenterBold(ws, fundStartAmountRow, fundEndColumn, fund.ReportStartingAmount,
                     ExcelNumberFormats.Accounting);
 
                 fundEndColumn++;
@@ -78,12 +82,12 @@ namespace ChurchBudgetReportGenerator
             AddCellValueCenterBold(ws, fundHeaderRow, fundEndColumn, "Total");
             ws.Column(fundEndColumn).Width = amountColumnWidth;
 
-            // Formula for Funds starting amount
+            // Formula for Funds starting amount on the far right
             AddCellFormulaRightBold(ws, fundStartAmountRow, fundEndColumn,
                     $"SUM({GetColumnName(fundStartColumn - 1)}{fundStartAmountRow}:" +
                     $"{GetColumnName(fundEndColumn - 2)}{fundStartAmountRow})",
                     ExcelNumberFormats.Accounting);
-            
+
             // Group by account types
             var rowListOfAccountTypes = new List<int>();
             var dataRow = dataStartRow;
@@ -92,12 +96,12 @@ namespace ChurchBudgetReportGenerator
                 AddCellValueBold(ws, dataRow, accountNumberColumn, $"{accountType}:");
                 dataRow++;
 
-                dataRow = AddAcountsTransactionsDataForType(ws, dataRow, accountType, configData, monthlySummaryData, fundStartColumn);
+                dataRow = AddAcountsTransactionsDataForType(ws, dataRow, accountType, configData, summaryData, fundStartColumn);
                 rowListOfAccountTypes.Add(dataRow);
 
                 // Add some space between types
                 ws.Cells[dataRow, accountNameColumn].Value = "";
-                dataRow++;                
+                dataRow++;
             }
 
             // Add final Net formulas
@@ -106,9 +110,9 @@ namespace ChurchBudgetReportGenerator
             var netRow = dataRow;
             foreach (var fund in configData.Funds)
             {
-                AddCellFormulaRightBold(ws, netRow, fundEndColumn, 
-                    $"{GetColumnName(fundEndColumn-1)}{rowListOfAccountTypes.First()-1}-" +
-                    $"{GetColumnName(fundEndColumn-1)}{rowListOfAccountTypes.Last()-1}",
+                AddCellFormulaRightBold(ws, netRow, fundEndColumn,
+                    $"{GetColumnName(fundEndColumn - 1)}{rowListOfAccountTypes.First() - 1}-" +
+                    $"{GetColumnName(fundEndColumn - 1)}{rowListOfAccountTypes.Last() - 1}",
                     ExcelNumberFormats.Accounting);
                 fundEndColumn++;
             }
@@ -120,7 +124,7 @@ namespace ChurchBudgetReportGenerator
             dataRow++;
 
             // Add Fund End Amount of the Period
-            AddCellValueBold(ws, dataRow, accountNameColumn, "Cash End of Period:");
+            AddCellValueBold(ws, dataRow, accountNameColumn, $"Cash End of Period{suffixForCashEnd}:");
             fundEndColumn = fundStartColumn;
             foreach (var fund in configData.Funds)
             {
@@ -141,6 +145,7 @@ namespace ChurchBudgetReportGenerator
             ws.Calculate();
             pck.Save();
 
+            // Update Funds ending amount in ConfigData
             fundEndColumn = fundStartColumn;
             foreach (var fund in configData.Funds)
             {
@@ -148,28 +153,97 @@ namespace ChurchBudgetReportGenerator
                 decimal fundEndAmount = string.IsNullOrWhiteSpace(fundEndAmountStr)
                     ? 0m
                     : decimal.Parse(fundEndAmountStr);
-                fund.StartingPeriodAmount = fundEndAmount;
+                fund.ReportStartingAmount = fundEndAmount;
                 fundEndColumn++;
             }
         }
 
         /// <summary>
-        /// Updates Excel file with Yearly Summary Report
+        /// Update Excel file with Monthly Expenses Summary
         /// </summary>
-        /// <param name="filePath"></param>
-        /// <param name="yearlyData"></param>
-        /// <param name="configData"></param>
-        public static void UpdateExcelFileWithYearySummaryReport(string filePath, IEnumerable<AccountMonthlySummaryData> yearlyData, ConfigData configData)
+        public static void UpdateExcelFileWithMonthlyExpensesSummary(string filePath, AccountTransactionsData monthlyGroupedExpenses, 
+            ConfigData configData, string sheetName, string headerTextFor3rdRow)
         {
-            throw new NotImplementedException();
+            // If not data found, nothing to add
+            if (monthlyGroupedExpenses == null)
+            {
+                return;
+            }
+
+            // Row and Column numbers of for this report
+            var headerRow = 1;
+            var columnHeaderRow = headerRow + 3;
+
+            var accountNameColumn = 1;
+            var descriptionColumn = accountNameColumn + 1;
+            var amountColumn = descriptionColumn + 1;
+            var subTotalColumn = amountColumn + 1;
+
+            // Open Excel file
+            FileInfo output = Utils.GetFileInfo(filePath, false);
+            ExcelPackage pck = new ExcelPackage(output);
+
+            // Create the workbook
+            // Check if required sheet already in file, delete to be updated
+            if (pck.Workbook.Worksheets[sheetName] != null)
+            {
+                pck.Workbook.Worksheets.Delete(sheetName);
+            }
+            var ws = pck.Workbook.Worksheets.Add(sheetName);
+
+            // Add Header Info            
+            AddHeaderRow(ws, headerRow, accountNameColumn, 2, 12,
+                "Expenses Details");
+            AddHeaderRow(ws, headerRow + 1, accountNameColumn, 2, 10,
+                headerTextFor3rdRow);
+
+            // Columns width
+            ws.Column(accountNameColumn).Width = 30;
+            ws.Column(descriptionColumn).Width = 30;
+            ws.Column(amountColumn).Width = 14;
+            ws.Column(subTotalColumn).Width = 14;
+
+            // Add Column Headers
+            AddCellValueBold(ws, columnHeaderRow, accountNameColumn, "Account Name");
+            AddCellValueBold(ws, columnHeaderRow, descriptionColumn, "Description");
+            AddCellValueBold(ws, columnHeaderRow, amountColumn, "Amount");
+            AddCellValueBold(ws, columnHeaderRow, subTotalColumn, "Sub Total");
+
+            // Add Account Transactions per account
+            var row = columnHeaderRow + 2;
+            foreach (var accountTransactions in monthlyGroupedExpenses.AccountTransactions.
+                GroupBy(at => at.Account.Name).OrderBy(g => g.Key))
+            {
+                var amountStartRow = row;
+                foreach (var accountTransaction in accountTransactions.OrderBy(a => a.Description))
+                {
+                    AddCellValueLeft(ws, row, accountNameColumn, accountTransactions.Key);
+                    AddCellValueLeft(ws, row, descriptionColumn, accountTransaction.Description);
+                    AddCellValueRight(ws, row, amountColumn, accountTransaction.Amount,
+                        ExcelNumberFormats.Accounting);
+                    row++;
+                }
+
+                // Add sub-total formula at the very right
+                var amountEndRow = row - 1;
+                AddCellFormulaRight(ws, row - 1, subTotalColumn,
+                    $"SUM({GetColumnName(amountColumn - 1)}{amountStartRow}:" +
+                    $"{GetColumnName(amountColumn - 1)}{amountEndRow})",
+                    ExcelNumberFormats.Accounting);
+
+                AddCellValueLeft(ws, row, accountNameColumn, "");
+                                
+                row++;
+            }
+
+            ws.Calculate();
+            pck.Save();
         }
-
-
 
         /// <summary>
         /// Updates Excel file with Monthly Summary Report for Bulletin
         /// </summary>
-        public static void UpdateExcelFileWithMonthlySummaryForBulletin(string filePath, AccountMonthlySummaryData monthlySummaryData, ConfigData configData)
+        public static void UpdateExcelFileWithMonthlySummaryForBulletin(string filePath, AccountSummaryData monthlySummaryData, ConfigData configData)
         {
             // Row and Column numbers of for this report
             var headerRow = 1;
@@ -290,9 +364,7 @@ namespace ChurchBudgetReportGenerator
 
 
             ws.Calculate();
-            pck.Save();
-
-            
+            pck.Save();            
         }
 
         /// <summary>
@@ -445,7 +517,7 @@ namespace ChurchBudgetReportGenerator
         }
 
         private static int AddAcountsTransactionsDataForType(ExcelWorksheet ws,
-            int row, AccountType accountType, ConfigData configData, AccountMonthlySummaryData monthlySummaryData,
+            int row, AccountType accountType, ConfigData configData, AccountSummaryData monthlySummaryData,
             int fundStartColumn)
         {
             var accountNumberColumn = 2;
@@ -564,6 +636,13 @@ namespace ChurchBudgetReportGenerator
             ws.Cells[row, column].Value = value;
             ws.Cells[row, column].Style.HorizontalAlignment = ExcelHorizontalAlignment.Right;
             ws.Cells[row, column].Style.Font.Bold = true;
+            AddCellNumberFormat(ws, row, column, numberFormat);
+        }
+
+        private static void AddCellFormulaRight(ExcelWorksheet ws, int row, int column, string formula, string numberFormat = null)
+        {
+            ws.Cells[row, column].Formula = formula;
+            ws.Cells[row, column].Style.HorizontalAlignment = ExcelHorizontalAlignment.Right;
             AddCellNumberFormat(ws, row, column, numberFormat);
         }
 
