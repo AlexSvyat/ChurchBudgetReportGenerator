@@ -71,6 +71,6 @@
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>
-    <PostBuildEvent>:: xcopy /cherkyfs $(TargetDir)*.* D:\Users\admin\Documents\Church\$(ProjectName)\</PostBuildEvent>
+    <PostBuildEvent>xcopy /cherkyfs $(TargetDir)*.* D:\Users\admin\Documents\Church\$(ProjectName)\</PostBuildEvent>
   </PropertyGroup>
 </Project>
